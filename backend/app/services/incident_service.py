@@ -1,4 +1,5 @@
 from app.repositories.incident_repository import IncidentRepository
+from app.services.message_service import MessageService
 
 VALID_SEVERITIES = ['low', 'medium', 'high', 'critical']
 VALID_STATUSES = ['open', 'in_progress', 'resolved', 'closed']
@@ -7,6 +8,7 @@ class IncidentService:
 
     def __init__(self):
         self.repository = IncidentRepository()
+        self.message_service = MessageService()
 
     def get_all_incidents(self):
         return self.repository.find_all()
@@ -28,7 +30,9 @@ class IncidentService:
         if severity not in VALID_SEVERITIES:
             raise ValueError(f'severity must be one of {VALID_SEVERITIES}')
 
-        return self.repository.create(title, description, severity, reporter_name)
+        incident = self.repository.create(title, description, severity, reporter_name)
+        self.message_service.publish_incident_created(incident)  # ← NOVO
+        return incident
 
     def update_incident_status(self, incident_id, data):
         status = data.get('status', '').lower()
@@ -41,7 +45,9 @@ class IncidentService:
         if not incident:
             raise ValueError(f'Incident {incident_id} not found')
 
-        return self.repository.update_status(incident_id, status, analyst_name)
+        incident = self.repository.update_status(incident_id, status, analyst_name)
+        self.message_service.publish_incident_updated(incident)  # ← NOVO
+        return incident
 
     def delete_incident(self, incident_id):
         incident = self.repository.find_by_id(incident_id)
