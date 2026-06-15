@@ -4,7 +4,8 @@ import logging
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from messaging import get_connection, get_channel, QUEUES
 
@@ -18,22 +19,22 @@ def handle_incident_created(ch, method, properties, body):
     data = json.loads(body.decode())
     incident = data['data']
     logging.info(f"NOVO INCIDENTE RECEBIDO:")
-    logging.info(f"  ID       : {incident['id']}")
-    logging.info(f"  Título   : {incident['title']}")
+    logging.info(f"  ID        : {incident['id']}")
+    logging.info(f"  Título    : {incident['title']}")
     logging.info(f"  Severidade: {incident['severity']}")
     logging.info(f"  Reportado por: {incident['reporter_name']}")
-    logging.info(f"  Timestamp: {data['timestamp']}")
+    logging.info(f"  Timestamp : {data['timestamp']}")
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def handle_incident_updated(ch, method, properties, body):
     data = json.loads(body.decode())
     incident = data['data']
     logging.info(f"INCIDENTE ATUALIZADO:")
-    logging.info(f"  ID      : {incident['id']}")
-    logging.info(f"  Título  : {incident['title']}")
+    logging.info(f"  ID        : {incident['id']}")
+    logging.info(f"  Título    : {incident['title']}")
     logging.info(f"  Novo status: {incident['status']}")
-    logging.info(f"  Analista: {incident['analyst_name']}")
-    logging.info(f"  Timestamp: {data['timestamp']}")
+    logging.info(f"  Analista  : {incident['analyst_name']}")
+    logging.info(f"  Timestamp : {data['timestamp']}")
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def start_consumer():
