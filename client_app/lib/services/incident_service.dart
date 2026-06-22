@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/incident.dart';
 
 class IncidentService {
-  final String baseUrl = 'http://10.0.2.2:5000/api';
+  final String baseUrl = 'http://localhost:5000/api';
 
   Future<List<Incident>> getIncidents() async {
     final response = await http.get(Uri.parse('$baseUrl/incidents'));
