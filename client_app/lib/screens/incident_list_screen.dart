@@ -1,12 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/incident.dart';
+import '../models/user.dart';
 import '../services/incident_service.dart';
+import '../services/mom_service.dart';
+import '../utils/app_theme.dart';
 import 'incident_detail_screen.dart';
 import 'create_incident_screen.dart';
+import 'login_screen.dart';
 
 class IncidentListScreen extends StatefulWidget {
-  const IncidentListScreen({super.key});
+  final User user;
+  const IncidentListScreen({super.key, required this.user});
 
   @override
   State<IncidentListScreen> createState() => _IncidentListScreenState();
@@ -14,11 +20,12 @@ class IncidentListScreen extends StatefulWidget {
 
 class _IncidentListScreenState extends State<IncidentListScreen> {
   final IncidentService _service = IncidentService();
+  final MomService _mom = MomService();
   List<Incident> _incidents = [];
   List<Incident> _filtered = [];
   String _selectedTab = 'Todos';
   bool _loading = true;
-  Timer? _pollingTimer;
+  StreamSubscription? _sub;
 
   final List<String> _tabs = ['Todos', 'Abertos', 'Em andamento', 'Resolvidos'];
 
@@ -26,15 +33,22 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
   void initState() {
     super.initState();
     _loadIncidents();
-    _pollingTimer = Timer.periodic(
-      const Duration(seconds: 10),
-      (_) => _loadIncidents(),
-    );
+    _mom.startPolling();
+    _sub = _mom.events.listen((event) {
+      if (event['type'] == 'incidents_updated') {
+        final list = event['data'] as List;
+        setState(() {
+          _incidents = list.map((j) => Incident.fromJson(j)).toList();
+          _applyFilter();
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
-    _pollingTimer?.cancel();
+    _sub?.cancel();
+    _mom.stop();
     super.dispose();
   }
 
@@ -58,7 +72,8 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
       } else if (_selectedTab == 'Abertos') {
         _filtered = _incidents.where((i) => i.status == 'open').toList();
       } else if (_selectedTab == 'Em andamento') {
-        _filtered = _incidents.where((i) => i.status == 'in_progress').toList();
+        _filtered =
+            _incidents.where((i) => i.status == 'in_progress').toList();
       } else {
         _filtered = _incidents
             .where((i) => i.status == 'resolved' || i.status == 'closed')
@@ -67,78 +82,68 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
     });
   }
 
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'open': return const Color(0xFF1565C0);
-      case 'in_progress': return const Color(0xFFF57F17);
-      case 'resolved': return const Color(0xFF2E7D32);
-      case 'closed': return Colors.grey;
-      default: return Colors.grey;
-    }
-  }
-
-  String _statusLabel(String status) {
-    switch (status) {
-      case 'open': return 'Aberto';
-      case 'in_progress': return 'Em andamento';
-      case 'resolved': return 'Resolvido';
-      case 'closed': return 'Fechado';
-      default: return status;
-    }
-  }
-
-  Color _severityColor(String severity) {
-    switch (severity) {
-      case 'critical': return const Color(0xFFC62828);
-      case 'high': return const Color(0xFFE65100);
-      case 'medium': return const Color(0xFFF57F17);
-      case 'low': return const Color(0xFF2E7D32);
-      default: return Colors.grey;
-    }
-  }
-
-  IconData _severityIcon(String severity) {
-    switch (severity) {
-      case 'critical':
-      case 'high': return Icons.warning_amber_rounded;
-      case 'medium': return Icons.info_outline_rounded;
-      case 'low': return Icons.check_circle_outline_rounded;
-      default: return Icons.help_outline;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: AppTheme.primary,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surface,
         elevation: 0,
-        title: const Text(
-          'Incidentes',
-          style: TextStyle(
-            color: Color(0xFF212121),
-            fontWeight: FontWeight.w500,
-            fontSize: 18,
-          ),
+        title: Row(
+          children: [
+            const Icon(Icons.shield_outlined,
+                color: AppTheme.accent, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'SecCall',
+              style: GoogleFonts.spaceGrotesk(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF757575)),
-            onPressed: _loadIncidents,
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              children: [
+                Text(
+                  widget.user.name.split(' ').first,
+                  style: GoogleFonts.spaceGrotesk(
+                    color: Colors.white54,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const LoginScreen()),
+                  ),
+                  child: const Icon(Icons.logout,
+                      color: Colors.white38, size: 20),
+                ),
+                const SizedBox(width: 12),
+              ],
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: AppTheme.surface,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: _tabs.map((tab) {
-                  final selected = _selectedTab == tab;
+                  final sel = _selectedTab == tab;
                   return GestureDetector(
                     onTap: () {
                       setState(() => _selectedTab = tab);
@@ -147,19 +152,26 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
                     child: Container(
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 6),
+                          horizontal: 16, vertical: 7),
                       decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFF1565C0)
-                            : const Color(0xFFF5F5F5),
+                        color: sel
+                            ? AppTheme.accent.withOpacity(0.15)
+                            : Colors.white.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color:
+                              sel ? AppTheme.accent : Colors.white12,
+                          width: sel ? 1.5 : 0.5,
+                        ),
                       ),
                       child: Text(
                         tab,
-                        style: TextStyle(
+                        style: GoogleFonts.spaceGrotesk(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: selected ? Colors.white : const Color(0xFF757575),
+                          color: sel
+                              ? AppTheme.accent
+                              : Colors.white38,
                         ),
                       ),
                     ),
@@ -170,49 +182,81 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
           ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(
+                        color: AppTheme.accent))
                 : _filtered.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Nenhum incidente encontrado.',
-                          style: TextStyle(color: Color(0xFF9E9E9E)),
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.inbox_outlined,
+                                color: Colors.white24, size: 48),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Nenhum incidente',
+                              style: GoogleFonts.spaceGrotesk(
+                                  color: Colors.white38),
+                            ),
+                          ],
                         ),
                       )
                     : RefreshIndicator(
+                        color: AppTheme.accent,
+                        backgroundColor: AppTheme.card,
                         onRefresh: _loadIncidents,
                         child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
                           itemCount: _filtered.length,
                           itemBuilder: (context, index) {
-                            final incident = _filtered[index];
+                            final inc = _filtered[index];
                             return GestureDetector(
                               onTap: () async {
                                 await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => IncidentDetailScreen(
-                                      incidentId: incident.id,
-                                    ),
+                                    builder: (_) =>
+                                        IncidentDetailScreen(
+                                            incidentId: inc.id),
                                   ),
                                 );
                                 _loadIncidents();
                               },
                               child: Container(
-                                color: Colors.white,
-                                margin: const EdgeInsets.only(bottom: 1),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
+                                margin:
+                                    const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.card,
+                                  borderRadius:
+                                      BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.white10,
+                                      width: 0.5),
+                                ),
                                 child: Row(
                                   children: [
                                     Container(
-                                      width: 40,
-                                      height: 40,
+                                      width: 42,
+                                      height: 42,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFE3F2FD),
-                                        borderRadius: BorderRadius.circular(8),
+                                        color: AppTheme.severityColor(
+                                                inc.severity)
+                                            .withOpacity(0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color:
+                                              AppTheme.severityColor(
+                                                      inc.severity)
+                                                  .withOpacity(0.3),
+                                          width: 0.5,
+                                        ),
                                       ),
                                       child: Icon(
-                                        _severityIcon(incident.severity),
-                                        color: _severityColor(incident.severity),
+                                        Icons.warning_amber_rounded,
+                                        color: AppTheme.severityColor(
+                                            inc.severity),
                                         size: 20,
                                       ),
                                     ),
@@ -223,21 +267,24 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            incident.title,
-                                            style: const TextStyle(
+                                            inc.title,
+                                            style:
+                                                GoogleFonts.spaceGrotesk(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w500,
-                                              color: Color(0xFF212121),
+                                              color: Colors.white,
                                             ),
                                             maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
+                                            overflow:
+                                                TextOverflow.ellipsis,
                                           ),
-                                          const SizedBox(height: 2),
+                                          const SizedBox(height: 3),
                                           Text(
-                                            incident.createdAt,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFF9E9E9E),
+                                            inc.createdAt,
+                                            style:
+                                                GoogleFonts.spaceGrotesk(
+                                              fontSize: 11,
+                                              color: Colors.white38,
                                             ),
                                           ),
                                         ],
@@ -245,19 +292,30 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 3),
+                                      padding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: _statusColor(incident.status)
-                                            .withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
+                                        color: AppTheme.statusColor(
+                                                inc.status)
+                                            .withOpacity(0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: AppTheme.statusColor(
+                                                  inc.status)
+                                              .withOpacity(0.3),
+                                          width: 0.5,
+                                        ),
                                       ),
                                       child: Text(
-                                        _statusLabel(incident.status),
-                                        style: TextStyle(
+                                        AppTheme.statusLabel(inc.status),
+                                        style: GoogleFonts.spaceGrotesk(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w500,
-                                          color: _statusColor(incident.status),
+                                          color: AppTheme.statusColor(
+                                              inc.status),
                                         ),
                                       ),
                                     ),
@@ -275,15 +333,19 @@ class _IncidentListScreenState extends State<IncidentListScreen> {
         onPressed: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const CreateIncidentScreen()),
+            MaterialPageRoute(
+              builder: (_) =>
+                  CreateIncidentScreen(user: widget.user),
+            ),
           );
           _loadIncidents();
         },
-        backgroundColor: const Color(0xFF1565C0),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
+        backgroundColor: AppTheme.accent,
+        foregroundColor: AppTheme.primary,
+        icon: const Icon(Icons.add),
+        label: Text(
           'Novo chamado',
-          style: TextStyle(color: Colors.white),
+          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w600),
         ),
       ),
     );

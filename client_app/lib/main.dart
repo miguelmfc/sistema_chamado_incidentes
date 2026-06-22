@@ -1,26 +1,21 @@
 import 'package:flutter/material.dart';
-import 'screens/incident_list_screen.dart';
+import 'utils/app_theme.dart';
+import 'screens/login_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const SecCallApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SecCallApp extends StatelessWidget {
+  const SecCallApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Incidentes de Segurança',
+      title: 'SecCall',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1565C0),
-        ),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-      ),
-      home: const IncidentListScreen(),
+      theme: AppTheme.theme,
+      home: const LoginScreen(),
     );
   }
 }
