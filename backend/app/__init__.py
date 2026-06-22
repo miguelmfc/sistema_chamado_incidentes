@@ -10,6 +10,9 @@ def create_app():
         init_db()
 
     from app.controllers.incident_controller import incident_bp
+    from app.controllers.user_controller import user_bp
+
     app.register_blueprint(incident_bp, url_prefix='/api')
+    app.register_blueprint(user_bp, url_prefix='/api')
 
     return app

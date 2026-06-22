@@ -24,5 +24,15 @@ def init_db():
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'client',
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ''')
     conn.commit()
     conn.close()
