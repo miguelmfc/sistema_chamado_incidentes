@@ -2,12 +2,19 @@ from app.repositories.incident_repository import IncidentRepository
 from app.services.message_service import MessageService
 
 VALID_SEVERITIES = ['low', 'medium', 'high', 'critical']
-VALID_STATUSES = ['open', 'in_progress', 'resolved', 'closed']
+VALID_STATUSES   = ['open', 'in_progress', 'resolved', 'closed']
+
+ACTION_MAP = {
+    'in_progress': 'accepted',
+    'closed':      'rejected',
+    'resolved':    'resolved',
+    'open':        'reopened',
+}
 
 class IncidentService:
 
     def __init__(self):
-        self.repository = IncidentRepository()
+        self.repository      = IncidentRepository()
         self.message_service = MessageService()
 
     def get_all_incidents(self):
@@ -20,9 +27,9 @@ class IncidentService:
         return incident
 
     def create_incident(self, data):
-        title = data.get('title', '').strip()
-        description = data.get('description', '').strip()
-        severity = data.get('severity', 'medium').lower()
+        title         = data.get('title', '').strip()
+        description   = data.get('description', '').strip()
+        severity      = data.get('severity', 'medium').lower()
         reporter_name = data.get('reporter_name', '').strip()
 
         if not title or not description or not reporter_name:
@@ -31,12 +38,13 @@ class IncidentService:
             raise ValueError(f'severity must be one of {VALID_SEVERITIES}')
 
         incident = self.repository.create(title, description, severity, reporter_name)
-        self.message_service.publish_incident_created(incident)  # ← NOVO
+        self.message_service.publish_incident_created(incident)
         return incident
 
     def update_incident_status(self, incident_id, data):
-        status = data.get('status', '').lower()
+        status       = data.get('status', '').lower()
         analyst_name = data.get('analyst_name')
+        notes        = data.get('notes', '').strip()
 
         if status not in VALID_STATUSES:
             raise ValueError(f'status must be one of {VALID_STATUSES}')
@@ -45,8 +53,14 @@ class IncidentService:
         if not incident:
             raise ValueError(f'Incident {incident_id} not found')
 
-        incident = self.repository.update_status(incident_id, status, analyst_name)
-        self.message_service.publish_incident_updated(incident)  # ← NOVO
+        incident = self.repository.update_status(incident_id, status, analyst_name, notes)
+
+        # Registra no audit_log (só quando há analista, ex: aceitar/recusar/resolver)
+        if analyst_name:
+            action = ACTION_MAP.get(status, status)
+            self.repository.create_audit_log(incident_id, analyst_name, action, notes)
+
+        self.message_service.publish_incident_updated(incident)
         return incident
 
     def delete_incident(self, incident_id):
@@ -54,3 +68,6 @@ class IncidentService:
         if not incident:
             raise ValueError(f'Incident {incident_id} not found')
         return self.repository.delete(incident_id)
+
+    def get_audit_log(self):
+        return self.repository.get_audit_log()

@@ -13,7 +13,8 @@ class IncidentRepository:
             reporter_name=row['reporter_name'],
             analyst_name=row['analyst_name'],
             created_at=row['created_at'],
-            updated_at=row['updated_at']
+            updated_at=row['updated_at'],
+            notes=row['notes'] if row['notes'] else '',
         )
 
     def find_all(self):
@@ -40,15 +41,16 @@ class IncidentRepository:
         conn.close()
         return self.find_by_id(incident_id)
 
-    def update_status(self, incident_id, status, analyst_name=None):
+    def update_status(self, incident_id, status, analyst_name=None, notes=''):
         conn = get_connection()
         conn.execute(
             '''UPDATE incidents
                SET status = ?,
                    analyst_name = COALESCE(?, analyst_name),
+                   notes = ?,
                    updated_at = datetime('now')
                WHERE id = ?''',
-            (status, analyst_name, incident_id)
+            (status, analyst_name, notes, incident_id)
         )
         conn.commit()
         conn.close()
@@ -60,3 +62,27 @@ class IncidentRepository:
         conn.commit()
         conn.close()
         return affected > 0
+
+    # ── Audit log ──────────────────────────────────────────────────────────────
+
+    def create_audit_log(self, incident_id, analyst_name, action, notes=''):
+        conn = get_connection()
+        conn.execute(
+            '''INSERT INTO audit_log (incident_id, analyst_name, action, notes)
+               VALUES (?, ?, ?, ?)''',
+            (incident_id, analyst_name, action, notes)
+        )
+        conn.commit()
+        conn.close()
+
+    def get_audit_log(self):
+        conn = get_connection()
+        rows = conn.execute(
+            '''SELECT a.*, i.title as incident_title
+               FROM audit_log a
+               JOIN incidents i ON i.id = a.incident_id
+               ORDER BY a.created_at DESC
+               LIMIT 100'''
+        ).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]

@@ -57,3 +57,9 @@ def delete_incident(incident_id):
         return success({'message': 'Incident deleted successfully'})
     except ValueError as e:
         return error(str(e), 404)
+
+# GET /api/audit-log
+@incident_bp.route('/audit-log', methods=['GET'])
+def get_audit_log():
+    logs = service.get_audit_log()
+    return success(logs)
