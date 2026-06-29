@@ -27,8 +27,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
 
   Future<void> _load() async {
     try {
-      final incident =
-          await _service.getIncidentById(widget.incidentId);
+      final incident = await _service.getIncidentById(widget.incidentId);
       setState(() {
         _incident = incident;
         _loading = false;
@@ -38,7 +37,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
     }
   }
 
-  Widget _infoItem(String label, String value) {
+  Widget _infoItem(String label, String value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -57,7 +56,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
             value,
             style: GoogleFonts.spaceGrotesk(
               fontSize: 14,
-              color: Colors.white,
+              color: valueColor ?? Colors.white,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -96,9 +95,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
               ? Center(
                   child: Text(
                     'Incidente não encontrado',
-                    style: GoogleFonts.spaceGrotesk(
-                      color: Colors.white38,
-                    ),
+                    style: GoogleFonts.spaceGrotesk(color: Colors.white38),
                   ),
                 )
               : SingleChildScrollView(
@@ -108,15 +105,12 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                     decoration: BoxDecoration(
                       color: AppTheme.card,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white10,
-                        width: 0.5,
-                      ),
+                      border: Border.all(color: Colors.white10, width: 0.5),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // TITLE + STATUS
+                        // Título + status
                         Row(
                           children: [
                             Expanded(
@@ -131,9 +125,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
+                                  horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: AppTheme.statusColor(inc.status)
                                     .withOpacity(0.12),
@@ -149,8 +141,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                                 style: GoogleFonts.spaceGrotesk(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
-                                  color:
-                                      AppTheme.statusColor(inc.status),
+                                  color: AppTheme.statusColor(inc.status),
                                 ),
                               ),
                             ),
@@ -158,26 +149,67 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                         ),
 
                         const SizedBox(height: 14),
-
-                        Divider(color: Colors.white12),
-
+                        const Divider(color: Colors.white12),
                         const SizedBox(height: 14),
 
                         _infoItem('Descrição', inc.description),
-                        _infoItem(
-                          'Severidade',
-                          inc.severity.toUpperCase(),
-                        ),
-                        _infoItem(
-                          'Reportado por',
-                          inc.reporterName,
-                        ),
+                        _infoItem('Severidade', inc.severity.toUpperCase()),
+                        _infoItem('Reportado por', inc.reporterName),
                         _infoItem(
                           'Analista responsável',
                           inc.analystName ?? 'Aguardando atribuição',
                         ),
                         _infoItem('Criado em', inc.createdAt),
                         _infoItem('Atualizado em', inc.updatedAt),
+
+                        // ← Observação do analista — só aparece se preenchida
+                        if (inc.notes != null && inc.notes!.isNotEmpty) ...[
+                          const Divider(color: Colors.white12),
+                          const SizedBox(height: 14),
+                          Text(
+                            'OBSERVAÇÃO DO ANALISTA',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11,
+                              color: Colors.white38,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accent.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: AppTheme.accent.withOpacity(0.2),
+                                width: 0.5,
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.comment_outlined,
+                                  size: 14,
+                                  color: AppTheme.accent.withOpacity(0.7),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    inc.notes!,
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 13,
+                                      color: Colors.white70,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
