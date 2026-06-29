@@ -16,8 +16,7 @@ class IncidentService {
   }
 
   Future<Incident> getIncidentById(int id) async {
-    final response =
-        await http.get(Uri.parse('$baseUrl/incidents/$id'));
+    final response = await http.get(Uri.parse('$baseUrl/incidents/$id'));
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return Incident.fromJson(data['data']);
@@ -26,13 +25,14 @@ class IncidentService {
   }
 
   Future<Incident> updateStatus(
-      int id, String status, String analystName) async {
+      int id, String status, String analystName, {String notes = ''}) async {
     final response = await http.patch(
       Uri.parse('$baseUrl/incidents/$id/status'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'status': status,
         'analyst_name': analystName,
+        'notes': notes,       // ← novo
       }),
     );
     if (response.statusCode == 200) {

@@ -18,13 +18,97 @@ class IncidentDetailScreen extends StatefulWidget {
 
 class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
   final IncidentService _service = IncidentService();
+  final _notesCtrl = TextEditingController();
   bool _loading = false;
 
+  @override
+  void dispose() {
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _updateStatus(String status) async {
+    _notesCtrl.clear();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          status == 'in_progress' ? 'Aceitar incidente' : 'Recusar incidente',
+          style: GoogleFonts.spaceGrotesk(
+              color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Observação (opcional)',
+                style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12, color: Colors.white54)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _notesCtrl,
+              maxLines: 3,
+              style: GoogleFonts.spaceGrotesk(
+                  color: Colors.white, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: status == 'in_progress'
+                    ? 'Ex: Iniciando análise do vetor de ataque...'
+                    : 'Ex: Fora do escopo do contrato...',
+                hintStyle:
+                    const TextStyle(color: Colors.white24, fontSize: 12),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.05),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.white12)),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.white12)),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide:
+                        const BorderSide(color: AppTheme.accent, width: 1)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar',
+                style: GoogleFonts.spaceGrotesk(color: Colors.white38)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  status == 'in_progress' ? AppTheme.success : AppTheme.danger,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(
+              status == 'in_progress' ? 'Confirmar aceite' : 'Confirmar recusa',
+              style: GoogleFonts.spaceGrotesk(
+                  color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     setState(() => _loading = true);
     try {
       await _service.updateStatus(
-          widget.incident.id, status, widget.user.name);
+        widget.incident.id,
+        status,
+        widget.user.name,
+        notes: _notesCtrl.text.trim(),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -34,9 +118,8 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                   : 'Incidente recusado.',
               style: GoogleFonts.spaceGrotesk(),
             ),
-            backgroundColor: status == 'in_progress'
-                ? AppTheme.success
-                : AppTheme.danger,
+            backgroundColor:
+                status == 'in_progress' ? AppTheme.success : AppTheme.danger,
           ),
         );
         Navigator.pop(context);
@@ -130,13 +213,12 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                                   .withOpacity(0.3),
                               width: 0.5),
                         ),
-                        child: Text(
-                            AppTheme.severityLabel(inc.severity),
+                        child: Text(AppTheme.severityLabel(inc.severity),
                             style: GoogleFonts.spaceGrotesk(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: AppTheme.severityColor(
-                                    inc.severity))),
+                                color:
+                                    AppTheme.severityColor(inc.severity))),
                       ),
                     ],
                   ),
@@ -149,9 +231,15 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                   _infoBlock(
                     'Severidade',
                     AppTheme.severityLabel(inc.severity),
-                    valueColor:
-                        AppTheme.severityColor(inc.severity),
+                    valueColor: AppTheme.severityColor(inc.severity),
                   ),
+                  // Observação já registrada (se existir)
+                  if (inc.notes != null && inc.notes!.isNotEmpty) ...[
+                    const Divider(color: Colors.white10),
+                    const SizedBox(height: 8),
+                    _infoBlock('Observação do analista', inc.notes!,
+                        valueColor: AppTheme.accent),
+                  ],
                 ],
               ),
             ),
@@ -178,8 +266,7 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
                       ),
-                      icon: const Icon(Icons.check_circle_outline,
-                          size: 18),
+                      icon: const Icon(Icons.check_circle_outline, size: 18),
                       label: Text('Aceitar',
                           style: GoogleFonts.spaceGrotesk(
                               fontWeight: FontWeight.w600)),
@@ -191,9 +278,8 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                   child: SizedBox(
                     height: 50,
                     child: ElevatedButton.icon(
-                      onPressed: _loading
-                          ? null
-                          : () => _updateStatus('closed'),
+                      onPressed:
+                          _loading ? null : () => _updateStatus('closed'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.danger,
                         foregroundColor: Colors.white,
@@ -213,8 +299,8 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
               const Padding(
                 padding: EdgeInsets.only(top: 16),
                 child: Center(
-                    child: CircularProgressIndicator(
-                        color: AppTheme.accent)),
+                    child:
+                        CircularProgressIndicator(color: AppTheme.accent)),
               ),
           ],
         ),

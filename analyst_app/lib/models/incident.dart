@@ -6,6 +6,7 @@ class Incident {
   final String status;
   final String reporterName;
   final String? analystName;
+  final String? notes;        // ← novo
   final String createdAt;
   final String updatedAt;
 
@@ -17,6 +18,7 @@ class Incident {
     required this.status,
     required this.reporterName,
     this.analystName,
+    this.notes,               // ← novo
     required this.createdAt,
     required this.updatedAt,
   });
@@ -30,6 +32,7 @@ class Incident {
       status: json['status'],
       reporterName: json['reporter_name'],
       analystName: json['analyst_name'],
+      notes: json['notes'],   // ← novo
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
     );
